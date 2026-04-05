@@ -1,6 +1,7 @@
 import heroImg from "@/assets/hero-illustration.jpg";
 import { Button } from "@/components/ui/button";
 import { Video, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
@@ -24,10 +25,12 @@ const HeroSection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button size="lg" className="gradient-hero border-0 text-base px-6 shadow-elevated">
-              <Video className="w-5 h-5 mr-2" />
-              Start Free Meeting
-            </Button>
+            <Link to="/meeting">
+              <Button size="lg" className="gradient-hero border-0 text-base px-6 shadow-elevated">
+                <Video className="w-5 h-5 mr-2" />
+                Start Free Meeting
+              </Button>
+            </Link>
             <Button size="lg" variant="outline" className="text-base px-6">
               Learn More
               <ArrowRight className="w-4 h-4 ml-2" />
