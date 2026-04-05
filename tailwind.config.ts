@@ -61,7 +61,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-      },
+        meeting: {
+          bg: "hsl(var(--meeting-bg))",
+          surface: "hsl(var(--meeting-surface))",
+          border: "hsl(var(--meeting-border))",
+          text: "hsl(var(--meeting-text))",
+          muted: "hsl(var(--meeting-muted))",
+        },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

@@ -45,6 +45,12 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
+    --meeting-bg: 200 10% 12%;
+    --meeting-surface: 200 10% 16%;
+    --meeting-border: 200 8% 22%;
+    --meeting-text: 40 20% 92%;
+    --meeting-muted: 200 8% 50%;
+
     --gradient-hero: linear-gradient(135deg, hsl(152 60% 22%), hsl(152 45% 30%));
     --gradient-gold: linear-gradient(135deg, hsl(38 80% 55%), hsl(30 85% 50%));
     --shadow-card: 0 4px 24px -4px hsl(150 20% 20% / 0.08);
