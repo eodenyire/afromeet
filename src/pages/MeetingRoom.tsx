@@ -60,7 +60,7 @@ const MeetingRoom = () => {
         </div>
         <div className="flex items-center gap-2 text-xs text-meeting-muted">
           <span className="hidden sm:inline">Meeting ID: 482-391-205</span>
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
           <span>10:04 AM</span>
         </div>
       </header>
