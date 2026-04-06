@@ -25,7 +25,7 @@ const HeroSection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <Link to="/meeting">
+            <Link to="/lobby">
               <Button size="lg" className="gradient-hero border-0 text-base px-6 shadow-elevated">
                 <Video className="w-5 h-5 mr-2" />
                 Start Free Meeting
