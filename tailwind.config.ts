@@ -68,6 +68,7 @@ export default {
           text: "hsl(var(--meeting-text))",
           muted: "hsl(var(--meeting-muted))",
         },
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
