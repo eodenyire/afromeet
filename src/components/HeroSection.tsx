@@ -1,6 +1,6 @@
 import heroImg from "@/assets/hero-illustration.jpg";
 import { Button } from "@/components/ui/button";
-import { Video, ArrowRight } from "lucide-react";
+import { Video, CalendarIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const HeroSection = () => {
@@ -31,10 +31,12 @@ const HeroSection = () => {
                 Start Free Meeting
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="text-base px-6">
-              Learn More
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+            <Link to="/schedule">
+              <Button size="lg" variant="outline" className="text-base px-6">
+                <CalendarIcon className="w-4 h-4 mr-2" />
+                Schedule Meeting
+              </Button>
+            </Link>
           </div>
 
           <p className="text-sm text-muted-foreground">
