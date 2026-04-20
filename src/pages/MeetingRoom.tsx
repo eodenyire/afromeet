@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useMeetingChat } from "@/hooks/useMeetingChat";
+import { useVoiceActivity } from "@/hooks/useVoiceActivity";
 import VideoTile from "@/components/VideoTile";
 import { toast } from "sonner";
 
@@ -54,6 +55,9 @@ const MeetingRoom = () => {
     micOn,
     camOn,
   });
+
+  // Detect local speaking so the mic button pulses when the user is talking.
+  const localIsSpeaking = useVoiceActivity(localStream, micOn);
 
   const { messages, sendMessage } = useMeetingChat(meetingId, userName);
 
@@ -143,14 +147,21 @@ const MeetingRoom = () => {
 
           {/* Controls bar */}
           <div className="flex items-center justify-center gap-2 sm:gap-3 pt-3 shrink-0">
-            <Button
-              size="icon"
-              variant={micOn ? "secondary" : "destructive"}
-              className="rounded-full w-11 h-11 meeting-control"
-              onClick={handleMicToggle}
-            >
-              {micOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-            </Button>
+            <div className="relative">
+              <Button
+                size="icon"
+                variant={micOn ? "secondary" : "destructive"}
+                className={`rounded-full w-11 h-11 meeting-control transition-shadow duration-150 ${
+                  localIsSpeaking ? "shadow-[0_0_0_3px_hsl(var(--primary)/0.5)]" : ""
+                }`}
+                onClick={handleMicToggle}
+              >
+                {micOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+              </Button>
+              {localIsSpeaking && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary border-2 border-meeting-surface animate-pulse pointer-events-none" />
+              )}
+            </div>
             <Button
               size="icon"
               variant={camOn ? "secondary" : "destructive"}
