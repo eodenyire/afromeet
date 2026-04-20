@@ -36,22 +36,27 @@ const MeetingLobby = () => {
   // Start camera preview
   useEffect(() => {
     let active = true;
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((s) => {
-        if (!active) { s.getTracks().forEach((t) => t.stop()); return; }
-        streamRef.current = s;
-        if (videoRef.current) videoRef.current.srcObject = s;
-      })
-      .catch(() => {
-        navigator.mediaDevices
-          .getUserMedia({ audio: true, video: false })
-          .then((s) => {
-            if (!active) { s.getTracks().forEach((t) => t.stop()); return; }
-            streamRef.current = s;
-          })
-          .catch(() => { /* ignore — user can still join without media */ });
-      });
+
+    const startPreview = async () => {
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        } catch {
+          return; // user can still join without media
+        }
+      }
+      if (!active) {
+        stream?.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      streamRef.current = stream;
+      if (videoRef.current && stream) videoRef.current.srcObject = stream;
+    };
+
+    startPreview();
     return () => {
       active = false;
       streamRef.current?.getTracks().forEach((t) => t.stop());

@@ -43,9 +43,9 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
   // ── Media setup ─────────────────────────────────────────────────────────────
   useEffect(() => {
     let active = true;
-    let acquiredStream: MediaStream | null = null;
 
     const setup = async () => {
+      let acquiredStream: MediaStream | null = null;
       try {
         acquiredStream = await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -63,11 +63,11 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
         }
       }
       if (!active) {
-        acquiredStream.getTracks().forEach((t) => t.stop());
+        acquiredStream?.getTracks().forEach((t) => t.stop());
         return;
       }
-      acquiredStream.getAudioTracks().forEach((t) => (t.enabled = micOn));
-      acquiredStream.getVideoTracks().forEach((t) => (t.enabled = camOn));
+      acquiredStream!.getAudioTracks().forEach((t) => (t.enabled = micOn));
+      acquiredStream!.getVideoTracks().forEach((t) => (t.enabled = camOn));
       localStreamRef.current = acquiredStream;
       setLocalStream(acquiredStream);
     };
@@ -75,6 +75,8 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
     setup();
     return () => {
       active = false;
+      localStreamRef.current?.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally run once
