@@ -1,22 +1,87 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import logo from "@/assets/afromeet-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Mic, MicOff, Video, VideoOff, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+
+const generateMeetingId = () => {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const seg = (len: number) =>
+    Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return `${seg(3)}-${seg(4)}-${seg(3)}`;
+};
+
+const getOrCreateUserId = () => {
+  let id = sessionStorage.getItem("userId");
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem("userId", id);
+  }
+  return id;
+};
 
 const MeetingLobby = () => {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => sessionStorage.getItem("userName") || "");
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const meetingId = useRef(searchParams.get("meeting") || generateMeetingId()).current;
+
+  // Start camera preview
+  useEffect(() => {
+    let active = true;
+
+    const startPreview = async () => {
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        } catch {
+          return; // user can still join without media
+        }
+      }
+      if (!active) {
+        stream?.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      streamRef.current = stream;
+      if (videoRef.current && stream) videoRef.current.srcObject = stream;
+    };
+
+    startPreview();
+    return () => {
+      active = false;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    streamRef.current?.getVideoTracks().forEach((t) => (t.enabled = camOn));
+  }, [camOn]);
+
+  useEffect(() => {
+    streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = micOn));
+  }, [micOn]);
 
   const handleJoin = () => {
     if (!name.trim()) return;
-    navigate("/meeting");
+    sessionStorage.setItem("userName", name.trim());
+    const userId = getOrCreateUserId();
+    // Stop the preview stream; MeetingRoom will open its own stream
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    navigate("/meeting", {
+      state: { userName: name.trim(), userId, meetingId, micOn, camOn },
+    });
   };
 
   return (
@@ -39,19 +104,24 @@ const MeetingLobby = () => {
             <p className="text-sm text-meeting-muted">
               Set up your audio and video before entering the meeting
             </p>
+            <p className="text-xs text-meeting-muted font-mono">
+              Meeting ID: {meetingId}
+            </p>
           </div>
 
           {/* Camera preview */}
           <Card className="bg-meeting-surface border-meeting-border overflow-hidden">
             <CardContent className="p-0">
               <div className="aspect-video bg-meeting-bg flex items-center justify-center relative">
-                {camOn ? (
-                  <div className="w-24 h-24 rounded-full gradient-hero flex items-center justify-center">
-                    <span className="text-primary-foreground font-display font-bold text-3xl">
-                      {name.trim() ? name.trim().charAt(0).toUpperCase() : "?"}
-                    </span>
-                  </div>
-                ) : (
+                {/* Live camera preview */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`absolute inset-0 w-full h-full object-cover ${camOn ? "" : "hidden"}`}
+                />
+                {!camOn && (
                   <div className="flex flex-col items-center gap-2">
                     <VideoOff className="w-10 h-10 text-meeting-muted" />
                     <span className="text-xs text-meeting-muted">Camera is off</span>
