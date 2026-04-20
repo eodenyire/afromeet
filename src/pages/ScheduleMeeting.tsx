@@ -52,6 +52,7 @@ const ScheduleMeeting = () => {
   const [description, setDescription] = useState("");
   const [created, setCreated] = useState(false);
   const [meetingLink, setMeetingLink] = useState("");
+  const [createdMeetingId, setCreatedMeetingId] = useState("");
   const [copied, setCopied] = useState(false);
 
   const canCreate = title.trim() && date && time;
@@ -61,6 +62,7 @@ const ScheduleMeeting = () => {
     const id = generateMeetingId();
     const link = `${window.location.origin}/lobby?meeting=${id}`;
     setMeetingLink(link);
+    setCreatedMeetingId(id);
     setCreated(true);
     toast.success("Meeting scheduled successfully!");
   };
@@ -299,7 +301,7 @@ const ScheduleMeeting = () => {
                   Copy Meeting Details
                 </Button>
                 <div className="grid grid-cols-2 gap-2">
-                  <Link to="/lobby">
+                  <Link to={`/lobby?meeting=${createdMeetingId}`}>
                     <Button className="w-full gradient-hero border-0 text-primary-foreground">
                       Join Now
                     </Button>
@@ -315,6 +317,7 @@ const ScheduleMeeting = () => {
                       setDuration("60");
                       setDescription("");
                       setMeetingLink("");
+                      setCreatedMeetingId("");
                     }}
                   >
                     Schedule Another
