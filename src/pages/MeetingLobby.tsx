@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Mic, MicOff, Video, VideoOff, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const generateMeetingId = () => {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -24,14 +25,19 @@ const getOrCreateUserId = () => {
 };
 
 const MeetingLobby = () => {
-  const [name, setName] = useState(() => sessionStorage.getItem("userName") || "");
+  const { profile, user } = useAuth();
+  const profileName = profile?.display_name ?? user?.email ?? "";
+  const [name, setName] = useState(() => sessionStorage.getItem("userName") || profileName);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const meetingId = useRef(searchParams.get("meeting") || generateMeetingId()).current;
+  const existingMeetingId = searchParams.get("meeting");
+  const meetingId = useRef(existingMeetingId || generateMeetingId()).current;
+  // The user is the host when they create a brand-new meeting (no ?meeting= param)
+  const isHost = !existingMeetingId;
 
   // Start camera preview
   useEffect(() => {
@@ -75,12 +81,12 @@ const MeetingLobby = () => {
   const handleJoin = () => {
     if (!name.trim()) return;
     sessionStorage.setItem("userName", name.trim());
-    const userId = getOrCreateUserId();
+    const userId = user?.id ?? getOrCreateUserId();
     // Stop the preview stream; MeetingRoom will open its own stream
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     navigate("/meeting", {
-      state: { userName: name.trim(), userId, meetingId, micOn, camOn },
+      state: { userName: name.trim(), userId, meetingId, micOn, camOn, isHost },
     });
   };
 

@@ -14,7 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          id: string
+          display_name: string | null
+          avatar_url: string | null
+          bio: string | null
+          time_zone: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          display_name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          time_zone?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          display_name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          time_zone?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      breakout_rooms: {
+        Row: {
+          id: string
+          meeting_id: string
+          name: string
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          meeting_id: string
+          name: string
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          meeting_id?: string
+          name?: string
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      breakout_participants: {
+        Row: {
+          id: string
+          room_id: string
+          user_id: string
+          assigned_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          user_id: string
+          assigned_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          user_id?: string
+          assigned_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

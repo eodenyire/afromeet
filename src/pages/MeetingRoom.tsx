@@ -5,13 +5,24 @@ import { Button } from "@/components/ui/button";
 import {
   Mic, MicOff, Video, VideoOff, Monitor, PhoneOff,
   MessageSquare, Users, MoreVertical, Send, Hand, SmilePlus,
-  ChevronLeft,
+  ChevronLeft, DoorOpen,
 } from "lucide-react";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useMeetingChat } from "@/hooks/useMeetingChat";
 import { useVoiceActivity } from "@/hooks/useVoiceActivity";
 import VideoTile from "@/components/VideoTile";
+import BreakoutRoomsPanel from "@/components/BreakoutRoomsPanel";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface LocationState {
   userName: string;
@@ -19,6 +30,9 @@ interface LocationState {
   meetingId: string;
   micOn: boolean;
   camOn: boolean;
+  isBreakout?: boolean;
+  mainMeetingId?: string;
+  isHost?: boolean;
 }
 
 const getInitials = (name: string) =>
@@ -40,20 +54,28 @@ const MeetingRoom = () => {
     }
   }, [state, navigate]);
 
-  const { userName = "You", userId = "", meetingId = "", micOn: initMic = true, camOn: initCam = true } =
+  const { userName = "You", userId = "", meetingId = "", micOn: initMic = true, camOn: initCam = true, isBreakout = false, mainMeetingId, isHost: stateIsHost } =
     state ?? {};
 
   const [micOn, setMicOn] = useState(initMic);
   const [camOn, setCamOn] = useState(initCam);
-  const [sidePanel, setSidePanel] = useState<"chat" | "people" | null>(null);
+  const [sidePanel, setSidePanel] = useState<"chat" | "people" | "breakout" | null>(null);
   const [chatInput, setChatInput] = useState("");
+  const [breakoutInvite, setBreakoutInvite] = useState<{ roomId: string; roomName: string } | null>(null);
 
-  const { localStream, participants, error, updatePresence } = useWebRTC({
+  // isHost is explicitly passed from the lobby (creator of the meeting).
+  // Falls back to true for the main room when not specified to preserve backward compatibility.
+  const isHost = stateIsHost ?? !isBreakout;
+
+  const { localStream, participants, error, updatePresence, sendBreakoutAssign } = useWebRTC({
     meetingId,
     userName,
     userId,
     micOn,
     camOn,
+    onBreakoutAssign: (roomId, roomName) => {
+      setBreakoutInvite({ roomId, roomName });
+    },
   });
 
   // Detect local speaking so the mic button pulses when the user is talking.
@@ -84,12 +106,33 @@ const MeetingRoom = () => {
     setChatInput("");
   };
 
-  const togglePanel = (panel: "chat" | "people") => {
+  const togglePanel = (panel: "chat" | "people" | "breakout") => {
     setSidePanel((prev) => (prev === panel ? null : panel));
   };
 
   const handleLeave = () => {
-    navigate("/");
+    if (isBreakout && mainMeetingId) {
+      navigate("/meeting", {
+        state: { userName, userId, meetingId: mainMeetingId, micOn, camOn, isBreakout: false },
+      });
+    } else {
+      navigate("/");
+    }
+  };
+
+  const handleJoinBreakout = (roomId: string, roomName: string) => {
+    navigate("/meeting", {
+      state: {
+        userName,
+        userId,
+        meetingId: roomId,
+        micOn,
+        camOn,
+        isBreakout: true,
+        mainMeetingId: isBreakout ? mainMeetingId : meetingId,
+      },
+    });
+    toast.info(`Joined breakout room: ${roomName}`);
   };
 
   // All tiles = local user first, then remote participants
@@ -110,6 +153,31 @@ const MeetingRoom = () => {
 
   return (
     <div className="h-screen flex flex-col bg-meeting-bg overflow-hidden">
+      {/* Breakout room invite dialog */}
+      <AlertDialog open={!!breakoutInvite} onOpenChange={(open) => !open && setBreakoutInvite(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Breakout Room Invitation</AlertDialogTitle>
+            <AlertDialogDescription>
+              You've been assigned to <strong>{breakoutInvite?.roomName}</strong>. Would you like to join now?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setBreakoutInvite(null)}>Later</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (breakoutInvite) {
+                  handleJoinBreakout(breakoutInvite.roomId, breakoutInvite.roomName);
+                  setBreakoutInvite(null);
+                }
+              }}
+            >
+              Join Room
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Top bar */}
       <header className="flex items-center justify-between px-4 py-2 bg-meeting-surface border-b border-meeting-border shrink-0">
         <div className="flex items-center gap-3">
@@ -120,6 +188,11 @@ const MeetingRoom = () => {
           <span className="hidden sm:block text-sm font-medium text-meeting-text truncate max-w-[160px]">
             {meetingId}
           </span>
+          {isBreakout && (
+            <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">
+              Breakout
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 text-xs text-meeting-muted">
           <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -198,6 +271,15 @@ const MeetingRoom = () => {
             >
               <Users className="w-5 h-5" />
             </Button>
+            <Button
+              size="icon"
+              variant={sidePanel === "breakout" ? "default" : "secondary"}
+              className="rounded-full w-11 h-11 meeting-control"
+              onClick={() => togglePanel("breakout")}
+              title="Breakout Rooms"
+            >
+              <DoorOpen className="w-5 h-5" />
+            </Button>
 
             <div className="h-8 w-px bg-meeting-border mx-1" />
 
@@ -208,7 +290,7 @@ const MeetingRoom = () => {
         </div>
 
         {/* Side panel */}
-        {sidePanel && (
+        {sidePanel && sidePanel !== "breakout" && (
           <aside className="w-full sm:w-80 shrink-0 bg-meeting-surface border-l border-meeting-border flex flex-col absolute sm:relative right-0 top-0 bottom-0 z-40 sm:z-auto">
             <div className="flex items-center justify-between px-4 py-3 border-b border-meeting-border">
               <h3 className="font-display font-semibold text-meeting-text text-sm">
@@ -290,6 +372,22 @@ const MeetingRoom = () => {
               </div>
             )}
           </aside>
+        )}
+
+        {/* Breakout Rooms panel */}
+        {sidePanel === "breakout" && (
+          <BreakoutRoomsPanel
+            meetingId={meetingId}
+            userId={userId}
+            isHost={isHost}
+            participants={allTiles.map((t) => ({ id: t.id, name: t.name }))}
+            onClose={() => setSidePanel(null)}
+            onSendAssign={(targetUserId, roomId, roomName) => {
+              sendBreakoutAssign(targetUserId, roomId, roomName, isBreakout ? mainMeetingId ?? meetingId : meetingId);
+            }}
+            onJoinRoom={handleJoinBreakout}
+            mainMeetingId={isBreakout ? mainMeetingId : undefined}
+          />
         )}
       </div>
     </div>

@@ -22,9 +22,10 @@ interface UseWebRTCOptions {
   userId: string;
   micOn: boolean;
   camOn: boolean;
+  onBreakoutAssign?: (roomId: string, roomName: string) => void;
 }
 
-export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebRTCOptions) {
+export function useWebRTC({ meetingId, userName, userId, micOn, camOn, onBreakoutAssign }: UseWebRTCOptions) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +36,9 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
   const localStreamRef = useRef<MediaStream | null>(null);
   const pendingCandidates = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const isSubscribed = useRef(false);
+
+  const onBreakoutAssignRef = useRef(onBreakoutAssign);
+  onBreakoutAssignRef.current = onBreakoutAssign;
 
   // Capture latest userName without re-running the channel effect
   const userNameRef = useRef(userName);
@@ -275,6 +279,12 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
       }
     });
 
+    // Breakout room assignment
+    channel.on("broadcast", { event: "breakout:assign" }, ({ payload }) => {
+      if (payload.to !== userId) return;
+      onBreakoutAssignRef.current?.(payload.roomId as string, payload.roomName as string);
+    });
+
     // Subscribe and publish our presence
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
@@ -351,5 +361,17 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
     pendingCandidates.current.delete(remoteId);
   };
 
-  return { localStream, participants, error, updatePresence };
+  // ── Send breakout room assignment ────────────────────────────────────────────
+  const sendBreakoutAssign = useCallback(
+    (targetUserId: string, roomId: string, roomName: string, mainMeetingId: string) => {
+      channelRef.current?.send({
+        type: "broadcast",
+        event: "breakout:assign",
+        payload: { from: userId, to: targetUserId, roomId, roomName, mainMeetingId },
+      });
+    },
+    [userId]
+  );
+
+  return { localStream, participants, error, updatePresence, sendBreakoutAssign };
 }
