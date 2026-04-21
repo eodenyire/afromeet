@@ -62,6 +62,9 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
           const replacementTrack =
             kind === "audio" ? replacementStream.getAudioTracks()[0] : replacementStream.getVideoTracks()[0];
           if (!replacementTrack) return;
+          replacementStream.getTracks().forEach((streamTrack) => {
+            if (streamTrack !== replacementTrack) streamTrack.stop();
+          });
           if (track) {
             stream.removeTrack(track);
             track.stop();
@@ -133,12 +136,16 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
 
   // ── Mic toggle ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    void updateSenderTrack("audio", micOn);
+    updateSenderTrack("audio", micOn).catch(() => {
+      // Errors are handled inside updateSenderTrack.
+    });
   }, [micOn, updateSenderTrack]);
 
   // ── Camera toggle ──────────────────────────────────────────────────────────
   useEffect(() => {
-    void updateSenderTrack("video", camOn);
+    updateSenderTrack("video", camOn).catch(() => {
+      // Errors are handled inside updateSenderTrack.
+    });
   }, [camOn, updateSenderTrack]);
 
   // ── Peer connection factory ──────────────────────────────────────────────────
