@@ -136,15 +136,15 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
 
   // ── Mic toggle ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    updateSenderTrack("audio", micOn).catch(() => {
-      // Errors are handled inside updateSenderTrack.
+    updateSenderTrack("audio", micOn).catch((err) => {
+      console.warn("[WebRTC] update audio track failed:", err);
     });
   }, [micOn, updateSenderTrack]);
 
   // ── Camera toggle ──────────────────────────────────────────────────────────
   useEffect(() => {
-    updateSenderTrack("video", camOn).catch(() => {
-      // Errors are handled inside updateSenderTrack.
+    updateSenderTrack("video", camOn).catch((err) => {
+      console.warn("[WebRTC] update video track failed:", err);
     });
   }, [camOn, updateSenderTrack]);
 
