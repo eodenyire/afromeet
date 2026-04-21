@@ -80,13 +80,14 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
 
       peerConnections.current.forEach((pc) => {
         const sender = pc.getSenders().find((s) => s.track?.kind === kind);
-        if (!sender || !enabled) return;
+        if (!sender) return;
+        if (!enabled) return; // disabled tracks stay attached; track.enabled stops media
         sender.replaceTrack(track).catch((err) => {
           console.warn(`[WebRTC] replaceTrack(${kind}) failed:`, err);
         });
       });
     },
-    []
+    [setError]
   );
 
   // ── Media setup ─────────────────────────────────────────────────────────────
@@ -259,7 +260,7 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
         ];
       });
 
-      if (hasPeer) return;
+      if (hasPeer) return; // Skip re-offer if we already have a peer connection.
 
       // Wait up to 5 s for local stream before creating offer
       await waitForStream();
