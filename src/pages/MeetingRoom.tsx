@@ -131,7 +131,7 @@ const MeetingRoom = () => {
       <div className="flex-1 flex min-h-0">
         {/* Video grid */}
         <div className="flex-1 p-3 flex flex-col min-w-0">
-          <div className="flex-1 grid grid-cols-2 lg:grid-cols-3 gap-2 auto-rows-fr">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 auto-rows-fr">
             {allTiles.map((tile) => (
               <VideoTile
                 key={tile.id}

@@ -40,6 +40,59 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
   const userNameRef = useRef(userName);
   userNameRef.current = userName;
 
+  const micOnRef = useRef(micOn);
+  const camOnRef = useRef(camOn);
+  micOnRef.current = micOn;
+  camOnRef.current = camOn;
+
+  const updateSenderTrack = useCallback(
+    async (kind: "audio" | "video", enabled: boolean) => {
+      const stream = localStreamRef.current;
+      if (!stream) return;
+
+      const tracks = kind === "audio" ? stream.getAudioTracks() : stream.getVideoTracks();
+      let track = tracks[0] ?? null;
+
+      if (enabled && (!track || track.readyState === "ended")) {
+        try {
+          const replacementStream = await navigator.mediaDevices.getUserMedia({
+            audio: kind === "audio",
+            video: kind === "video",
+          });
+          const replacementTrack =
+            kind === "audio" ? replacementStream.getAudioTracks()[0] : replacementStream.getVideoTracks()[0];
+          if (!replacementTrack) return;
+          replacementStream.getTracks().forEach((streamTrack) => {
+            if (streamTrack !== replacementTrack) streamTrack.stop();
+          });
+          if (track) {
+            stream.removeTrack(track);
+            track.stop();
+          }
+          stream.addTrack(replacementTrack);
+          track = replacementTrack;
+        } catch (err) {
+          setError(
+            `Could not re-enable ${kind === "audio" ? "microphone" : "camera"}. Check your browser permissions.`
+          );
+          return;
+        }
+      }
+
+      if (track) track.enabled = enabled;
+
+      peerConnections.current.forEach((pc) => {
+        const sender = pc.getSenders().find((s) => s.track?.kind === kind);
+        if (!sender) return;
+        if (!enabled) return; // disabled tracks stay attached; track.enabled stops media
+        sender.replaceTrack(track).catch((err) => {
+          console.warn(`[WebRTC] replaceTrack(${kind}) failed:`, err);
+        });
+      });
+    },
+    [setError]
+  );
+
   // ── Media setup ─────────────────────────────────────────────────────────────
   useEffect(() => {
     let active = true;
@@ -66,8 +119,8 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
         acquiredStream?.getTracks().forEach((t) => t.stop());
         return;
       }
-      acquiredStream!.getAudioTracks().forEach((t) => (t.enabled = micOn));
-      acquiredStream!.getVideoTracks().forEach((t) => (t.enabled = camOn));
+      acquiredStream!.getAudioTracks().forEach((t) => (t.enabled = micOnRef.current));
+      acquiredStream!.getVideoTracks().forEach((t) => (t.enabled = camOnRef.current));
       localStreamRef.current = acquiredStream;
       setLocalStream(acquiredStream);
     };
@@ -83,13 +136,17 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
 
   // ── Mic toggle ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = micOn));
-  }, [micOn]);
+    updateSenderTrack("audio", micOn).catch((err) => {
+      console.warn("[WebRTC] update audio track failed:", err);
+    });
+  }, [micOn, updateSenderTrack]);
 
   // ── Camera toggle ──────────────────────────────────────────────────────────
   useEffect(() => {
-    localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = camOn));
-  }, [camOn]);
+    updateSenderTrack("video", camOn).catch((err) => {
+      console.warn("[WebRTC] update video track failed:", err);
+    });
+  }, [camOn, updateSenderTrack]);
 
   // ── Peer connection factory ──────────────────────────────────────────────────
   const getOrCreatePC = useCallback(
@@ -183,9 +240,22 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
       if (joinedId === userId || !isSubscribed.current) return;
 
       const presence = (newPresences as Array<{ name: string; isMuted: boolean; isVideoOff: boolean }>)[0];
+      const hasPeer = peerConnections.current.has(joinedId);
 
       setParticipants((prev) => {
-        if (prev.find((p) => p.id === joinedId)) return prev;
+        const existing = prev.find((p) => p.id === joinedId);
+        if (existing) {
+          return prev.map((p) =>
+            p.id === joinedId
+              ? {
+                  ...p,
+                  name: presence?.name ?? p.name,
+                  isMuted: presence?.isMuted ?? p.isMuted,
+                  isVideoOff: presence?.isVideoOff ?? p.isVideoOff,
+                }
+              : p
+          );
+        }
         return [
           ...prev,
           {
@@ -196,6 +266,8 @@ export function useWebRTC({ meetingId, userName, userId, micOn, camOn }: UseWebR
           },
         ];
       });
+
+      if (hasPeer) return; // Skip re-offer if we already have a peer connection.
 
       // Wait up to 5 s for local stream before creating offer
       await waitForStream();
